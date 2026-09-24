@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Checker</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #0a0e1a;
+            color: #f1f5f9;
+        }
+        .status {
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        .success {
+            background: #10b981;
+            color: white;
+        }
+        .error {
+            background: #ef4444;
+            color: white;
+        }
+        .info {
+            background: #3b82f6;
+            color: white;
+        }
+        button {
+            background: #8b5cf6;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin: 10px 5px;
+        }
+        button:hover {
+            background: #7c3aed;
+        }
+        .details {
+            background: #1e293b;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 MetaMask Network Checker</h1>
+    
+    <div id="status"></div>
+    <div id="details"></div>
+    
+    <button onclick="checkNetwork()">Check Network</button>
+    <button onclick="addLocalhost()">Add Localhost Network</button>
+    <button onclick="switchToLocalhost()">Switch to Localhost</button>
+    
+    <script>
+        async function checkNetwork() {
+            const statusDiv = document.getElementById('status');
+            const detailsDiv = document.getElementById('details');
+            
+            if (!window.ethereum) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '❌ MetaMask not detected!<br>Please install MetaMask extension.';
+                return;
+            }
+            
+            try {
+                const chainId = await window.ethereum.request({ method: 'eth_chainId' });
+                const chainIdDecimal = parseInt(chainId, 16);
+                const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+                
+                detailsDiv.className = 'details';
+                detailsDiv.innerHTML = `
+                    <strong>Current Network:</strong><br>
+                    Chain ID (Hex): ${chainId}<br>
+                    Chain ID (Decimal): ${chainIdDecimal}<br>
+                    Connected Account: ${accounts[0] || 'Not connected'}<br>
+                `;
+                
+                if (chainIdDecimal === 31337) {
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = '✅ Perfect! You\'re on Localhost 8545 (Chain ID: 31337)<br>You can mint NFTs now!';
+                } else if (chainIdDecimal === 80002) {
+                    statusDiv.className = 'status success';
+                    statusDiv.innerHTML = '✅ You\'re on Polygon Amoy (Chain ID: 80002)<br>This works too!';
+                } else {
+                    statusDiv.className = 'status error';
+                    statusDiv.innerHTML = `❌ Wrong Network!<br>You're on Chain ID: ${chainIdDecimal}<br>Expected: 31337 (Localhost) or 80002 (Amoy)<br><br>Click "Switch to Localhost" button below.`;
+                }
+            } catch (error) {
+                statusDiv.className = 'status error';
+                statusDiv.innerHTML = '❌ Error: ' + error.message;
+            }
+        }
+        
+        async function addLocalhost() {
+            if (!window.ethereum) {
+                alert('MetaMask not detected!');
+                return;
+            }
+            
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_addEthereumChain',
+                    params: [{
+                        chainId: '0x7a69', // 31337 in hex
+                        chainName: 'Localhost 8545',
+                        nativeCurrency: {
+                            name: 'Ethereum',
+                            symbol: 'ETH',
+                            decimals: 18
+                        },
+                        rpcUrls: ['http://127.0.0.1:8545'],
+                        blockExplorerUrls: null
+                    }]
+                });
+                
+                document.getElementById('status').className = 'status success';
+                document.getElementById('status').innerHTML = '✅ Localhost network added successfully!';
+            } catch (error) {
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').innerHTML = '❌ Error: ' + error.message;
+            }
+        }
+        
+        async function switchToLocalhost() {
+            if (!window.ethereum) {
+                alert('MetaMask not detected!');
+                return;
+            }
+            
+            try {
+                await window.ethereum.request({
+                    method: 'wallet_switchEthereumChain',
+                    params: [{ chainId: '0x7a69' }], // 31337 in hex
+                });
+                
+                document.getElementById('status').className = 'status success';
+                document.getElementById('status').innerHTML = '✅ Switched to Localhost 8545!<br>Now refresh your app and try minting.';
+                
+                setTimeout(checkNetwork, 1000);
+            } catch (error) {
+                if (error.code === 4902) {
+                    // Network not added yet
+                    document.getElementById('status').className = 'status info';
+                    document.getElementById('status').innerHTML = '⚠️ Network not found. Click "Add Localhost Network" first.';
+                } else {
+                    document.getElementById('status').className = 'status error';
+                    document.getElementById('status').innerHTML = '❌ Error: ' + error.message;
+                }
+            }
+        }
+        
+        // Auto-check on load
+        window.addEventListener('load', () => {
+            setTimeout(checkNetwork, 500);
+        });
+    </script>
+    
+    <div style="margin-top: 40px; padding: 20px; background: #1e293b; border-radius: 8px;">
+        <h3>📝 Quick Guide:</h3>
+        <ol>
+            <li>Click "Check Network" to see your current network</li>
+            <li>If wrong network, click "Add Localhost Network"</li>
+            <li>Then click "Switch to Localhost"</li>
+            <li>Go back to the app and try minting!</li>
+        </ol>
+        
+        <h3>🔑 Test Account:</h3>
+        <p>Private Key: <code style="background: #0a0e1a; padding: 5px; border-radius: 4px;">0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80</code></p>
+        <p>This account has 10,000 ETH for testing!</p>
+    </div>
+</body>
+</html>
